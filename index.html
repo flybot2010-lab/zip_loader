@@ -115,7 +115,7 @@
 
                         status.textContent = 'Launching site...';
 
-                        navigator.serviceWorker.register('/virtual/sw.js', { scope: '/virtual/' })
+                        navigator.serviceWorker.register('./virtual/sw.js', { scope: './virtual/' })
                             .then(reg => {
                                 let attempts = 0;
                                 const maxAttempts = 50;
@@ -126,7 +126,7 @@
                                         const cacheBuster = Date.now();
                                         uploadScreen.style.display = 'none';
                                         iframe.style.display = 'block';
-                                        iframe.src = `/virtual/?nocache=${cacheBuster}`;
+                                        iframe.src = `./virtual/?nocache=${cacheBuster}`;
                                     } else if (attempts < maxAttempts) {
                                         attempts++;
                                         setTimeout(sendToWorker, 100);

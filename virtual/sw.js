@@ -50,15 +50,16 @@ self.mimeTypes = {
 self.addEventListener('message', async function(e) {
     if (e.data.type === 'setFiles') {
         const cache = await caches.open('virtual-files');
+        const scope = self.registration.scope;
         for (const [path, ab] of Object.entries(e.data.files)) {
             const ext = path.slice(Math.max(0, path.lastIndexOf('.'))).toLowerCase();
             const contentType = self.mimeTypes[ext] || 'application/octet-stream';
             const headers = { 'Content-Type': contentType };
             const response = new Response(ab, { headers });
-            const url = '/virtual/' + path;
+            const url = scope + path; 
             await cache.put(url, response.clone());
             if (path === 'index.html') {
-                await cache.put('/virtual/', response);
+                await cache.put(scope, response); 
             }
         }
     }
@@ -73,11 +74,11 @@ self.addEventListener('activate', function(e) {
 });
 
 self.addEventListener('fetch', function(e) {
-    const url = new URL(e.request.url);
-    if (url.pathname.startsWith('/virtual/')) {
+    const scope = self.registration.scope;
+    if (e.request.url.startsWith(scope)) {
         e.respondWith(
             caches.open('virtual-files').then(cache => {
-                return cache.match(url.pathname).then(match => {
+                return cache.match(e.request.url).then(match => {
                     return match || new Response(`<!DOCTYPE html><html><head><meta http-equiv="refresh" content="5"><title>Zip Loader</title></head><body>Not Found, or still loading. If unsure, hold your breath and count to five.</body></html>`, {status: 404,headers: {'Content-Type': 'text/html'}});
                 });
             })
