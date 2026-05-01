@@ -123,9 +123,10 @@
                                 const sendToWorker = () => {
                                     if (reg.active) {
                                         reg.active.postMessage({ type: 'setFiles', files: fileObj });
+                                        const cacheBuster = Date.now();
                                         uploadScreen.style.display = 'none';
                                         iframe.style.display = 'block';
-                                        iframe.src = '/virtual/';
+                                        iframe.src = `/virtual/?nocache=${cacheBuster}`;
                                     } else if (attempts < maxAttempts) {
                                         attempts++;
                                         setTimeout(sendToWorker, 100);

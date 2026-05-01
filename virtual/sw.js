@@ -78,7 +78,7 @@ self.addEventListener('fetch', function(e) {
         e.respondWith(
             caches.open('virtual-files').then(cache => {
                 return cache.match(url.pathname).then(match => {
-                    return match || new Response('Not Found', { status: 404 });
+                    return match || new Response(`<meta http-equiv="refresh" content="5">Not Found, or still loading. If unsure, hold your breath and count to five.`, { status: 404 });
                 });
             })
         );
