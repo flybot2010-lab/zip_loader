@@ -78,8 +78,11 @@ self.addEventListener('fetch', function(e) {
     if (e.request.url.startsWith(scope)) {
         e.respondWith(
             caches.open('virtual-files').then(cache => {
-                return cache.match(e.request.url).then(match => {
-                    return match || new Response(`<!DOCTYPE html><html><head><meta http-equiv="refresh" content="5"><title>Zip Loader</title></head><body>Not Found, or still loading. If unsure, hold your breath and count to five.</body></html>`, {status: 404,headers: {'Content-Type': 'text/html'}});
+                return cache.match(e.request, { ignoreSearch: true }).then(match => {
+                    return match || new Response(`<!DOCTYPE html><html><head><meta http-equiv="refresh" content="5"><title>Zip Loader</title></head><body text=FFFFFF bgcolor=000000>Not Found, or still loading. If unsure, hold your breath and count to five.</body></html>`, {
+                        status: 404,
+                        headers: {'Content-Type': 'text/html'}
+                    });
                 });
             })
         );
