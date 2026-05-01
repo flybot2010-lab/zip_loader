@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZIP Loader</title>
+    <script src="https://unpkg.com/jszip@3.10.1/dist/jszip.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        body { margin: 0; }
+        #app { display: none; width: 100%; height: 100vh; border: none; }
+        .drop-zone {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .drop-zone.dragover {
+            background-color: rgb(23 23 23);
+            border-color: rgb(59 130 246);
+            transform: scale(1.02);
+        }
+    </style>
+</head>
+<body class="bg-zinc-950 text-white min-h-screen flex items-center justify-center">
+    <div id="uploadScreen" class="max-w-md w-full mx-auto p-8">
+        <div class="text-center mb-10">
+            <div class="mx-auto w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mb-4">
+                <span class="text-3xl">📦</span>
+            </div>
+            <h1 class="text-4xl font-semibold tracking-tight">ZIP Loader</h1>
+            <p class="text-zinc-400 mt-2">Load any static website from a ZIP file</p>
+        </div>
+
+        <div id="dropZone" 
+             class="drop-zone border-2 border-dashed border-zinc-700 rounded-3xl p-12 text-center cursor-pointer hover:border-zinc-500 bg-zinc-900">
+            <input type="file" id="zipInput" accept=".zip" class="hidden">
+            
+            <div class="space-y-4">
+                <div class="mx-auto w-12 h-12 bg-zinc-800 rounded-2xl flex items-center justify-center text-2xl">
+                    ⬆️
+                </div>
+                <div>
+                    <p class="font-medium text-lg">Drop your ZIP file here</p>
+                    <p class="text-zinc-500 text-sm mt-1">or click to browse</p>
+                </div>
+                <div id="fileName" class="text-xs text-blue-400 font-mono break-all mt-4 min-h-[1.25rem]"></div>
+            </div>
+        </div>
+
+        <div id="status" class="mt-6 text-center text-sm text-zinc-500 hidden"></div>
+    </div>
+
+    <iframe id="app"></iframe>
+
+    <script>
+        const input = document.getElementById('zipInput');
+        const iframe = document.getElementById('app');
+        const dropZone = document.getElementById('dropZone');
+        const uploadScreen = document.getElementById('uploadScreen');
+        const status = document.getElementById('status');
+        const fileNameEl = document.getElementById('fileName');
+
+        input.value = '';
+
+        dropZone.addEventListener('click', () => input.click());
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file && file.name.endsWith('.zip')) {
+                handleFile(file);
+            } else {
+                alert('Please drop a valid .zip file');
+            }
+        });
+
+        input.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) handleFile(file);
+        });
+
+        function handleFile(file) {
+            fileNameEl.textContent = file.name;
+            status.classList.remove('hidden');
+            status.textContent = 'Loading ZIP...';
+
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                const buffer = ev.target.result;
+                
+                JSZip.loadAsync(buffer).then(zip => {
+                    const filePromises = [];
+                    zip.forEach((relPath, zipEntry) => {
+                        if (!zipEntry.dir) {
+                            filePromises.push(zipEntry.async('arraybuffer').then(content => [relPath, content]));
+                        }
+                    });
+
+                    Promise.all(filePromises).then(entries => {
+                        const fileObj = Object.fromEntries(entries);
+
+                        if (!('index.html' in fileObj)) {
+                            alert('Invalid ZIP! No index.html found.');
+                            resetUI();
+                            return;
+                        }
+
+                        status.textContent = 'Launching site...';
+
+                        navigator.serviceWorker.register('/virtual/sw.js', { scope: '/virtual/' })
+                            .then(reg => {
+                                let attempts = 0;
+                                const maxAttempts = 50;
+
+                                const sendToWorker = () => {
+                                    if (reg.active) {
+                                        reg.active.postMessage({ type: 'setFiles', files: fileObj });
+                                        uploadScreen.style.display = 'none';
+                                        iframe.style.display = 'block';
+                                        iframe.src = '/virtual/';
+                                    } else if (attempts < maxAttempts) {
+                                        attempts++;
+                                        setTimeout(sendToWorker, 100);
+                                    } else {
+                                        alert("Service Worker didn't activate in time. Try again.");
+                                        resetUI();
+                                    }
+                                };
+                                sendToWorker();
+                            })
+                            .catch(err => {
+                                console.error(err);
+                                alert("Service Worker registration failed. Are they blocked by your browser?");
+                                resetUI();
+                            });
+                    });
+                }).catch(err => {
+                    console.error(err);
+                    alert('Failed to read ZIP file.');
+                    resetUI();
+                });
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function resetUI() {
+            status.classList.add('hidden');
+            fileNameEl.textContent = '';
+            input.value = '';
+        }
+    </script>
+</body>
+</html>
