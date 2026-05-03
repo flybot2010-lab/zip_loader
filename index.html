@@ -1,4 +1,3 @@
-<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -119,13 +118,18 @@
                                 const sendToWorker = () => {
                                     if (reg.active) {
                                         reg.active.postMessage({ type: 'setFiles', files: fileObj });
-                                        const cacheBuster = Date.now();
-                                        uploadScreen.style.display = 'none';
+                                        status.textContent = 'Preparing environment...';
 
-                                        const iframe = document.createElement('iframe');
-                                        iframe.style.cssText = 'width:100%;height:100vh;border:none;display:block;';
-                                        iframe.src = `./virtual/?nocache=${cacheBuster}`;
-                                        document.body.appendChild(iframe);
+                                        setTimeout(() => {
+                                            const cacheBuster = Date.now();
+                                            uploadScreen.style.display = 'none';
+
+                                            const iframe = document.createElement('iframe');
+                                            iframe.style.cssText = 'width:100%;height:100vh;border:none;display:block;';
+                                            iframe.src = `./virtual/?nocache=${cacheBuster}`;
+                                            document.body.appendChild(iframe);
+                                        }, 1000);
+
                                     } else if (attempts < maxAttempts) {
                                         attempts++;
                                         setTimeout(sendToWorker, 100);
