@@ -49,6 +49,7 @@ self.mimeTypes = {
 
 self.addEventListener('message', async function(e) {
     if (e.data.type === 'setFiles') {
+        await caches.delete('virtual-files');
         const cache = await caches.open('virtual-files');
         const scope = self.registration.scope;
         for (const [path, ab] of Object.entries(e.data.files)) {
